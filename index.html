@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>House Price Predictor</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f7f8;
+    --card: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #2563eb;
+    --border: #e2e2e2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111214;
+      --card: #1a1c1f;
+      --text: #f0f0f0;
+      --muted: #a0a0a0;
+      --accent: #5b8def;
+      --border: #2e2f33;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 460px;
+    width: 100%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 4px 0;
+  }
+  p.sub {
+    color: var(--muted);
+    margin: 0 0 24px 0;
+    font-size: 0.9rem;
+  }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 16px 0 6px 0;
+  }
+  select, input[type="range"] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+  }
+  .range-value {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  button {
+    width: 100%;
+    margin-top: 24px;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { opacity: 0.9; }
+  .result {
+    margin-top: 24px;
+    padding: 20px;
+    border-radius: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    text-align: center;
+    display: none;
+  }
+  .result.show { display: block; }
+  .result .price {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .footer-note {
+    margin-top: 20px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🏠 House Price Predictor</h1>
+    <p class="sub">Client-side linear regression estimate based on location, rooms, and size.</p>
+
+    <label for="location">Location</label>
+    <select id="location"></select>
+
+    <label for="rooms">Rooms: <span id="roomsVal">3</span></label>
+    <input type="range" id="rooms" min="1" max="6" value="3" step="1">
+
+    <label for="size">Size (sqft): <span id="sizeVal">1200</span></label>
+    <input type="range" id="size" min="300" max="4000" value="1200" step="50">
+
+    <button onclick="predict()">Predict Price</button>
+
+    <div class="result" id="result">
+      <div class="price" id="priceOutput"></div>
+    </div>
+
+    <p class="footer-note">
+      This static page reimplements the model as plain JS (linear regression,
+      trained offline on the same sample data — R² ≈ 0.94) so it can run
+      directly on GitHub Pages with no server. The full-accuracy Random Forest
+      version lives in <code>app.py</code> and is deployed on Streamlit Cloud.
+    </p>
+  </div>
+
+<script>
+  // Coefficients from a linear regression trained on data/house_prices.csv
+  const MODEL = {
+    "locations": ["Downtown", "Rural", "Suburb North", "Suburb South", "Uptown"],
+    "coeffs": {
+      "Downtown": 86941.9854,
+      "Rural": -88159.6899,
+      "Suburb North": -19331.5405,
+      "Suburb South": -29825.7596,
+      "Uptown": 47736.5051,
+      "rooms": 8151.6849,
+      "size_sqft": 154.6214,
+      "intercept": -2638.4994
+    }
+  };
+
+  const locationSelect = document.getElementById("location");
+  MODEL.locations.forEach(loc => {
+    const opt = document.createElement("option");
+    opt.value = loc;
+    opt.textContent = loc;
+    locationSelect.appendChild(opt);
+  });
+
+  const roomsInput = document.getElementById("rooms");
+  const sizeInput = document.getElementById("size");
+  roomsInput.addEventListener("input", () => {
+    document.getElementById("roomsVal").textContent = roomsInput.value;
+  });
+  sizeInput.addEventListener("input", () => {
+    document.getElementById("sizeVal").textContent = sizeInput.value;
+  });
+
+  function predict() {
+    const location = locationSelect.value;
+    const rooms = parseFloat(roomsInput.value);
+    const size = parseFloat(sizeInput.value);
+
+    const price =
+      MODEL.coeffs[location] +
+      MODEL.coeffs["rooms"] * rooms +
+      MODEL.coeffs["size_sqft"] * size +
+      MODEL.coeffs["intercept"];
+
+    const clamped = Math.max(20000, price);
+    document.getElementById("priceOutput").textContent =
+      "$" + clamped.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    document.getElementById("result").classList.add("show");
+  }
+</script>
+</body>
+</html>
